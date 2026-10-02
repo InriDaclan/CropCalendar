@@ -4,6 +4,11 @@
 
 ---
 
+
+## Preview 
+
+![Home Page](Screenshot from 2026-10-02 12-58-06.png)
+
 ## 🌟 Key Features
 
 ### 1. Shopping UI with Growth Days Instead of Prices
@@ -240,5 +245,3 @@ For production deployment:
 - Disable demo accounts by ensuring `CREATE_DEMO_ACCOUNTS` is not set to `true`
 - Configure proper HTTPS reverse proxy (e.g., Nginx, Apache)
 - Collect static files: `python manage.py collectstatic`
-```
-# CropCalendar
