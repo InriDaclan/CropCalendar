@@ -1,0 +1,54 @@
+## CROPCALENDAR SETUP
+
+1. REQUIREMENTS
+   - Python 3.8+
+   - Node.js 18+
+   - pip (Python package manager)
+   - npm (Node package manager)
+
+2. CLONE PROJECT
+   git clone <repository-url>
+   cd cropcalendar-master
+
+3. BACKEND SETUP
+   cd backend
+   python -m venv venv
+   source venv/bin/activate   # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   cp .env.example .env
+   # Edit .env to set SECRET_KEY and other variables as needed
+   python manage.py migrate
+   # Optional: create superuser: python manage.py createsuperuser
+
+4. ENVIRONMENT VARIABLES
+   Backend: Edit backend/.env (see .env.example for variable names)
+   Frontend: Edit frontend/.env (see frontend/.env.example for variable names)
+   Required backend variables: SECRET_KEY, DEBUG, ALLOWED_HOSTS, DATABASE_URL
+   Frontend variables are optional; VITE_API_BASE defaults to /api
+
+5. DATABASE SETUP
+   The project uses SQLite by default (file db.sqlite3 in backend/).
+   To use PostgreSQL, set DATABASE_URL in backend/.env to:
+   postgres://user:password@localhost:5432/cropcalendar
+   Then run migrations again.
+
+6. START BACKEND
+   Source the virtual environment if not already activated:
+   source venv/bin/activate
+   python manage.py runserver 0.0.0.0:8000
+
+7. FRONTEND SETUP
+   cd frontend
+   npm install
+   cp .env.example .env
+   # Edit .env if needed (e.g., to change VITE_API_BASE if backend is on different port/domain)
+
+8. START FRONTEND
+   npm run dev
+
+9. TROUBLESHOOTING
+   - If the backend fails to start, ensure the virtual environment is activated and dependencies are installed.
+   - If the frontend cannot connect to the backend, check VITE_API_BASE in frontend/.env.
+   - If migrations fail, check DATABASE_URL in backend/.env.
+   - If you encounter "Address already in use" errors, change the port in the start command or stop existing processes.
+   - For demo accounts, set CREATE_DEMO_ACCOUNTS=true in backend/.env (not recommended for production).

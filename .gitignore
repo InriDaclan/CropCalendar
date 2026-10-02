@@ -1,0 +1,70 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Backend (Django/Python)
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+ENV/
+env/
+.venv/
+.conda/
+db.sqlite3
+media/
+instance/
+.webassets-cache
+.sqliterator
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+celerybeat-schedule
+celerybeat.pid
+
+# Frontend (Node/Vite)
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.sln*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+
+# Claude Code settings
+.claude/
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tmp
+*.temp
+*.orig
+*.bak
+*.swp
