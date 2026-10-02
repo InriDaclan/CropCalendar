@@ -7,7 +7,7 @@
 
 ## Preview 
 
-![Home Page](Screenshot%from%2026-10-02%12-58-06.png)
+![Home Page](Screenshot%20from%202026-10-02%2012-58-06.png)
 
 ## 🌟 Key Features
 
