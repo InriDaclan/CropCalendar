@@ -1,0 +1,146 @@
+import React from 'react';
+import { 
+  Sun, 
+  Droplets, 
+  Eye, 
+  CalendarPlus, 
+  Clock, 
+  Edit3, 
+  Trash2, 
+  Check, 
+  Compass,
+  Star
+} from 'lucide-react';
+
+export default function CropCard({ 
+  crop, 
+  onQuickAdd, 
+  onViewDetails, 
+  user, 
+  onEditCrop, 
+  onDeleteCrop 
+}) {
+  const isQuickGrow = crop.growth_days <= 45;
+
+  return (
+    <div className="crop-card">
+      {/* Product Image Area */}
+      <div className="crop-image-wrap" onClick={() => onViewDetails(crop)}>
+        <img 
+          src={crop.image_url || 'https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=800&q=80'} 
+          alt={crop.name}
+          className="crop-img"
+          loading="lazy"
+        />
+        <span className="season-badge">
+          {crop.season}
+        </span>
+        <span className="category-tag">
+          {crop.category_name}
+        </span>
+        <button 
+          className="quick-preview-btn" 
+          title="Quick preview details"
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewDetails(crop);
+          }}
+        >
+          <Eye size={16} />
+        </button>
+      </div>
+
+      {/* Product Body */}
+      <div className="crop-card-body">
+        <div className="crop-title-row">
+          <h3 className="crop-name">{crop.name}</h3>
+          {crop.scientific_name && (
+            <div className="crop-scientific">{crop.scientific_name}</div>
+          )}
+        </div>
+
+        <p className="crop-desc">{crop.description}</p>
+
+        {/* Requirements Specs */}
+        <div className="crop-specs">
+          <span className="spec-pill" title={`Sunlight: ${crop.sunlight}`}>
+            <Sun size={13} color="#f59e0b" />
+            <span>{crop.sunlight.split(' ')[0]}</span>
+          </span>
+          <span className="spec-pill" title={`Watering: ${crop.watering}`}>
+            <Droplets size={13} color="#3b82f6" />
+            <span>{crop.watering} Water</span>
+          </span>
+          <span className="spec-pill" title={`Difficulty: ${crop.difficulty}`}>
+            <Star size={13} color="#eab308" />
+            <span>{crop.difficulty}</span>
+          </span>
+        </div>
+
+        {/* 
+          CORE REQUIREMENT:
+          SHOPPING UI PRICING AREA REPLACED WITH GROWTH DAYS 
+        */}
+        <div className="crop-price-replacement">
+          <div>
+            <div style={{ fontSize: '0.7rem', color: '#166534', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Cycle Duration
+            </div>
+            <div className="growth-days-display">
+              <span className="growth-days-number">{crop.growth_days}</span>
+              <span className="growth-days-unit">Days</span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <span className="growth-sub-badge">
+              {isQuickGrow ? '⚡ Fast Yield' : '🌱 Full Season'}
+            </span>
+            <div style={{ fontSize: '0.7rem', color: '#166534', marginTop: '0.2rem' }}>
+              Germinates: {crop.germination_days}d
+            </div>
+          </div>
+        </div>
+
+        {/* Add to Calendar / Cart Action */}
+        <div className="crop-card-actions">
+          <button 
+            className="btn-add-schedule"
+            onClick={() => onQuickAdd(crop)}
+            title="Add to your planting schedule"
+          >
+            <CalendarPlus size={16} />
+            <span>Add to Calendar</span>
+          </button>
+          <button 
+            className="btn-secondary-action" 
+            onClick={() => onViewDetails(crop)}
+            title="Full growth details & tips"
+          >
+            <Eye size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Admin Quick Action Controls */}
+      {user?.is_staff && (
+        <div className="admin-card-bar">
+          <button 
+            className="admin-mini-btn edit"
+            onClick={() => onEditCrop(crop)}
+          >
+            <Edit3 size={13} />
+            <span>Edit</span>
+          </button>
+          <button 
+            className="admin-mini-btn delete"
+            onClick={() => onDeleteCrop(crop.id, crop.name)}
+          >
+            <Trash2 size={13} />
+            <span>Delete</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

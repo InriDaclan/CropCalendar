@@ -1,0 +1,471 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import Navbar from './components/Navbar';
+import HeroBanner from './components/HeroBanner';
+import CropCard from './components/CropCard';
+import CropDetailsModal from './components/CropDetailsModal';
+import ScheduleDrawer from './components/ScheduleDrawer';
+import ScheduleView from './components/ScheduleView';
+import CropFormModal from './components/CropFormModal';
+import AuthModal from './components/AuthModal';
+import { 
+  api, 
+  getSavedUser, 
+  setSavedUser, 
+  setAuthToken, 
+  getAuthToken 
+} from './api';
+import { 
+  Filter, 
+  ArrowUpDown, 
+  Clock, 
+  Calendar, 
+  Sprout, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle 
+} from 'lucide-react';
+
+export default function App() {
+  // User Authentication State
+  const [user, setUser] = useState(getSavedUser());
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+
+  // App Data State
+  const [crops, setCrops] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filter & Navigation State
+  const [activeTab, setActiveTab] = useState('catalog'); // 'catalog' or 'schedule'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [seasonFilter, setSeasonFilter] = useState('all');
+  const [difficultyFilter, setDifficultyFilter] = useState('all');
+  const [maxDaysFilter, setMaxDaysFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('growth_asc'); // Growth Days ascending by default!
+
+  // Modals & Drawers
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedCropDetails, setSelectedCropDetails] = useState(null);
+  const [isCropFormOpen, setIsCropFormOpen] = useState(false);
+  const [cropToEdit, setCropToEdit] = useState(null);
+
+  // Toast notifications
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // Load initial data
+  const loadCrops = async () => {
+    try {
+      const data = await api.getCrops({
+        category: selectedCategory,
+        season: seasonFilter,
+        difficulty: difficultyFilter,
+        search: searchQuery,
+        max_days: maxDaysFilter,
+        sort: sortBy
+      });
+      setCrops(data);
+    } catch (err) {
+      console.error('Failed to load crops', err);
+    }
+  };
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const [cats, st] = await Promise.all([
+        api.getCategories(),
+        api.getStats()
+      ]);
+      setCategories(cats);
+      setStats(st);
+    } catch (err) {
+      console.error('Failed to load initial data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSchedules = async () => {
+    if (!user) {
+      setSchedules([]);
+      return;
+    }
+    try {
+      const data = await api.getSchedules();
+      setSchedules(data);
+    } catch (err) {
+      console.error('Failed to load schedules', err);
+    }
+  };
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    loadCrops();
+  }, [selectedCategory, seasonFilter, difficultyFilter, maxDaysFilter, sortBy, searchQuery]);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [user]);
+
+  // Auth Handlers
+  const handleLogin = async (username, password) => {
+    const data = await api.login(username, password);
+    setAuthToken(data.token);
+    setSavedUser(data.user);
+    setUser(data.user);
+    showToast(`Welcome back, ${data.user.username}!`);
+  };
+
+  const handleRegister = async (username, password, email, is_staff) => {
+    const data = await api.register(username, password, email, is_staff);
+    setAuthToken(data.token);
+    setSavedUser(data.user);
+    setUser(data.user);
+    showToast(`Account created! Welcome, ${data.user.username}!`);
+  };
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    setSavedUser(null);
+    setUser(null);
+    setSchedules([]);
+    showToast('Logged out successfully', 'info');
+  };
+
+  // Schedule / Cart Actions
+  const handleQuickAdd = async (crop) => {
+    if (!user) {
+      setIsAuthOpen(true);
+      return;
+    }
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      await api.createSchedule({
+        crop_id: crop.id,
+        planted_date: todayStr,
+        plot_location: 'Garden Bed 1',
+        quantity: 1,
+        status: 'growing',
+        notes: 'Added from Market Catalog'
+      });
+      await loadSchedules();
+      showToast(`Added "${crop.name}" to your Garden Calendar! Projected in ${crop.growth_days} days.`);
+      setIsDrawerOpen(true);
+    } catch (err) {
+      showToast('Failed to schedule crop', 'error');
+    }
+  };
+
+  const handleScheduleFromModal = async (scheduleData) => {
+    try {
+      await api.createSchedule(scheduleData);
+      await loadSchedules();
+      showToast(`Crop successfully scheduled!`);
+      setIsDrawerOpen(true);
+    } catch (err) {
+      showToast('Failed to schedule crop', 'error');
+    }
+  };
+
+  const handleUpdateScheduleStatus = async (id, status) => {
+    try {
+      await api.updateSchedule(id, { status });
+      await loadSchedules();
+      showToast(`Crop status updated to "${status}"!`);
+    } catch (err) {
+      showToast('Failed to update status', 'error');
+    }
+  };
+
+  const handleDeleteSchedule = async (id) => {
+    try {
+      await api.deleteSchedule(id);
+      await loadSchedules();
+      showToast('Crop removed from schedule', 'info');
+    } catch (err) {
+      showToast('Failed to remove item', 'error');
+    }
+  };
+
+  // Admin Crop Management Actions
+  const handleSaveCrop = async (formData, editId) => {
+    if (editId) {
+      await api.updateCrop(editId, formData);
+      showToast('Crop updated successfully!');
+    } else {
+      await api.createCrop(formData);
+      showToast('New crop created successfully!');
+    }
+    await loadCrops();
+    const newStats = await api.getStats();
+    setStats(newStats);
+  };
+
+  const handleDeleteCrop = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete "${name}" from the catalog?`)) {
+      return;
+    }
+    try {
+      await api.deleteCrop(id);
+      showToast(`Deleted "${name}"`, 'info');
+      await loadCrops();
+      const newStats = await api.getStats();
+      setStats(newStats);
+    } catch (err) {
+      showToast('Failed to delete crop', 'error');
+    }
+  };
+
+  return (
+    <div className="app-container">
+      {/* Toast Alert */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: toast.type === 'error' ? '#ef4444' : toast.type === 'info' ? '#3b82f6' : '#16a34a',
+          color: 'white',
+          padding: '0.75rem 1.4rem',
+          borderRadius: '999px',
+          fontWeight: '700',
+          fontSize: '0.9rem',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* Main Navbar */}
+      <Navbar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        scheduleCount={schedules.length}
+        setIsDrawerOpen={setIsDrawerOpen}
+        user={user}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onLogout={handleLogout}
+        onOpenAddCrop={() => {
+          setCropToEdit(null);
+          setIsCropFormOpen(true);
+        }}
+      />
+
+      {/* Category Pills Navigation */}
+      {activeTab === 'catalog' && (
+        <nav className="category-nav">
+          <div className="category-nav-inner">
+            <button
+              className={`cat-chip ${selectedCategory === 'all' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('all')}
+            >
+              🌿 All Varieties ({stats?.total_crops || crops.length})
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                className={`cat-chip ${selectedCategory === cat.slug ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(cat.slug)}
+              >
+                {cat.name} ({cat.crop_count})
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
+
+      {/* Main Content Area */}
+      <main className="main-content">
+        {activeTab === 'catalog' ? (
+          <>
+            {/* Store Hero Banner */}
+            <HeroBanner stats={stats} />
+
+            {/* Shopping Catalog Controls / Filters Bar */}
+            <div className="catalog-bar">
+              <div className="filter-group">
+                <span className="filter-label">Filter:</span>
+                
+                {/* Season Filter */}
+                <select 
+                  className="select-input"
+                  value={seasonFilter}
+                  onChange={(e) => setSeasonFilter(e.target.value)}
+                >
+                  <option value="all">All Seasons</option>
+                  <option value="Spring">Spring</option>
+                  <option value="Summer">Summer</option>
+                  <option value="Autumn">Autumn</option>
+                  <option value="Winter">Winter</option>
+                  <option value="All Season">All Season</option>
+                </select>
+
+                {/* Difficulty Filter */}
+                <select 
+                  className="select-input"
+                  value={difficultyFilter}
+                  onChange={(e) => setDifficultyFilter(e.target.value)}
+                >
+                  <option value="all">All Difficulties</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Advanced">Advanced</option>
+                </select>
+
+                {/* Growth Days Filter (The price replacement concept) */}
+                <select 
+                  className="select-input"
+                  value={maxDaysFilter}
+                  onChange={(e) => setMaxDaysFilter(e.target.value)}
+                  style={{ borderColor: '#86efac', background: '#f0fdf4', color: '#166534', fontWeight: '600' }}
+                >
+                  <option value="all">⏱️ Any Growth Duration</option>
+                  <option value="30">Under 30 Days (Ultra Fast)</option>
+                  <option value="60">Under 60 Days</option>
+                  <option value="90">Under 90 Days</option>
+                  <option value="120">Under 120 Days</option>
+                </select>
+              </div>
+
+              {/* Sort By Dropdown */}
+              <div className="filter-group">
+                <span className="filter-label">Sort By:</span>
+                <select 
+                  className="select-input"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{ fontWeight: '600' }}
+                >
+                  <option value="growth_asc">⏱️ Growth Days: Fastest First</option>
+                  <option value="growth_desc">⏱️ Growth Days: Longest First</option>
+                  <option value="name_asc">Alphabetical: A to Z</option>
+                  <option value="name_desc">Alphabetical: Z to A</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Crops Shopping Grid */}
+            {crops.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '4rem 1.5rem', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                <Sprout size={48} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '700' }}>No crops found</h3>
+                <p style={{ color: '#64748b', marginTop: '0.4rem' }}>
+                  No plants match your active search and filter criteria. Try resetting the filters.
+                </p>
+                <button 
+                  className="nav-btn" 
+                  style={{ marginTop: '1.2rem', display: 'inline-flex' }}
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setSeasonFilter('all');
+                    setDifficultyFilter('all');
+                    setMaxDaysFilter('all');
+                    setSearchQuery('');
+                  }}
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            ) : (
+              <div className="crops-grid">
+                {crops.map((crop) => (
+                  <CropCard
+                    key={crop.id}
+                    crop={crop}
+                    onQuickAdd={handleQuickAdd}
+                    onViewDetails={(c) => setSelectedCropDetails(c)}
+                    user={user}
+                    onEditCrop={(c) => {
+                      setCropToEdit(c);
+                      setIsCropFormOpen(true);
+                    }}
+                    onDeleteCrop={handleDeleteCrop}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <ScheduleView
+            schedules={schedules}
+            onUpdateStatus={handleUpdateScheduleStatus}
+            onDeleteSchedule={handleDeleteSchedule}
+            onBackToCatalog={() => setActiveTab('catalog')}
+            user={user}
+            onOpenAuth={() => setIsAuthOpen(true)}
+          />
+        )}
+      </main>
+
+      {/* Cart / Garden Bag Drawer */}
+      <ScheduleDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        schedules={schedules}
+        onUpdateStatus={handleUpdateScheduleStatus}
+        onDeleteSchedule={handleDeleteSchedule}
+        onViewFullSchedule={() => setActiveTab('schedule')}
+        user={user}
+        onOpenAuth={() => {
+          setIsDrawerOpen(false);
+          setIsAuthOpen(true);
+        }}
+      />
+
+      {/* Crop Details Modal */}
+      {selectedCropDetails && (
+        <CropDetailsModal
+          crop={selectedCropDetails}
+          onClose={() => setSelectedCropDetails(null)}
+          onSchedule={handleScheduleFromModal}
+          user={user}
+          onOpenAuth={() => {
+            setSelectedCropDetails(null);
+            setIsAuthOpen(true);
+          }}
+        />
+      )}
+
+      {/* Admin Add/Edit Crop Modal */}
+      {isCropFormOpen && (
+        <CropFormModal
+          isOpen={isCropFormOpen}
+          onClose={() => {
+            setIsCropFormOpen(false);
+            setCropToEdit(null);
+          }}
+          cropToEdit={cropToEdit}
+          categories={categories}
+          onSave={handleSaveCrop}
+        />
+      )}
+
+      {/* Sign In / Register Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+      />
+    </div>
+  );
+}

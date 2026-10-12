@@ -1,0 +1,43 @@
+import React from 'react';
+import { Clock, Zap, Shield, Sparkles } from 'lucide-react';
+
+export default function HeroBanner({ stats }) {
+  return (
+    <div className="hero-banner">
+      <div className="hero-text">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+          <Sparkles size={16} color="#34d399" />
+          <span style={{ fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6ee7b7' }}>
+            Seasonal Growth Marketplace
+          </span>
+        </div>
+        <h1>Browse by Growth Days, Not Prices.</h1>
+        <p>
+          Instead of price tags, explore plants by how quickly they reach your table. 
+          Pick your favorite varieties and schedule them directly to your personal garden calendar.
+        </p>
+      </div>
+
+      <div className="hero-stats">
+        <div className="stat-pill">
+          <div className="stat-num">{stats?.total_crops || 16}</div>
+          <div className="stat-label">Crops in Catalog</div>
+        </div>
+
+        <div className="stat-pill">
+          <div className="stat-num">{stats?.avg_growth_days || 78}d</div>
+          <div className="stat-label">Avg Growth Cycle</div>
+        </div>
+
+        <div className="stat-pill">
+          <div className="stat-num" style={{ color: '#86efac' }}>
+            {stats?.fastest_crop?.growth_days || 24}d
+          </div>
+          <div className="stat-label">
+            Fastest ({stats?.fastest_crop?.name?.split(' ')[0] || 'Radish'})
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
